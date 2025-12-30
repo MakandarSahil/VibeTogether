@@ -12,6 +12,7 @@ namespace VibeTogether.Server.Models
         public string RoomCode { get; set; } = null!;
         public string RoomName { get; set; } = null!;
         public string HostUserId { get; set; } = null!;
+        public List<string> CoHostUserIds { get; set; } = new();
         public List<string> Members { get; set; } = new();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

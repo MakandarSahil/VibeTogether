@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using MongoDB.Driver;
 using System;
 using VibeTogether.Server.Data;
 using VibeTogether.Server.DTOs.Chat;
@@ -17,6 +18,31 @@ namespace VibeTogether.Server.Hubs
         {
             _presenceService = presenceService;
             _context = context;
+        }
+
+        public override async Task OnConnectedAsync()
+        {
+            var userId = Context.UserIdentifier;
+
+            if(string.IsNullOrEmpty(userId) )
+            {
+                Context.Abort();
+                return;
+            }
+
+            await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            var userId = Context.UserIdentifier;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                _presenceService.RemoveUser(userId);
+            }
+
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task JoinRoom(string roomId)
@@ -58,23 +84,79 @@ namespace VibeTogether.Server.Hubs
                 RoomId = roomId,
                 Username = username,
                 Message = message,
-                Timestamp = DateTime.UtcNow
+                Timestamp = chatMessage.Timestamp
             };
 
             await Clients.Group(roomId)
                 .SendAsync("ReceiveMessage", dto);
         }
 
-        public override async Task OnDisconnectedAsync(Exception? exception)
+        public async Task ActivateRoom(string roomId)
         {
-            var userId = Context.UserIdentifier;
+            var userId = Context.UserIdentifier!;
+            _presenceService.SetActiveRoom(userId, roomId);
 
-            if(!string.IsNullOrEmpty(userId))
+            await Clients.Caller.SendAsync("ActiveRoomChanged", roomId);
+        }
+
+        public Task<string?> GetActiveRoom()
+        {
+            var userId = Context.UserIdentifier!;
+            return Task.FromResult(_presenceService.GetActiveRoom(userId));
+        }
+
+        public async Task AddCoHost(string roomId, string targetUserId)
+        {
+            var userId = Context.UserIdentifier!;
+            var room = await GetRoom(roomId);
+
+            if (room.HostUserId != userId)
+                throw new HubException("Only host can add co-host");
+
+            if (!room.CoHostUserIds.Contains(targetUserId))
             {
-                _presenceService.RemoveUser(userId);
+                room.CoHostUserIds.Add(targetUserId);
+                await SaveRoom(room);
             }
 
-            await base.OnDisconnectedAsync(exception);
+            await Clients.Group(roomId)
+                .SendAsync("CoHostAdded", targetUserId);
         }
+
+        public async Task RemoveCoHost(string roomId, string targetUserId)
+        {
+            var userId = Context.UserIdentifier!;
+            var room = await GetRoom(roomId);
+
+            if (room.HostUserId != userId)
+                throw new HubException("Only host can remove co-hosts");
+
+            room.CoHostUserIds.Remove(targetUserId);
+            await SaveRoom(room);
+
+            await Clients.Group(roomId)
+                .SendAsync("CoHostRemoved", targetUserId);
+        }
+
+        private async Task<Room> GetRoom(string roomId)
+        {
+            var room = await _context.Rooms
+                .Find(r => r.Id == roomId)
+                .FirstOrDefaultAsync();
+
+            if (room == null)
+                throw new HubException("Room not found");
+            
+            return room;
+        }
+
+        private async Task SaveRoom(Room room)
+        {
+            await _context.Rooms.ReplaceOneAsync(
+                r => r.Id == room.Id,
+                room
+            );
+        }
+
     }
 }

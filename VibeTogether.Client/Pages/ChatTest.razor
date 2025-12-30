@@ -70,7 +70,7 @@ ea
             .WithUrl("http://localhost:5000/hubs/room", options =>
             {
                 options.AccessTokenProvider = () =>
-                    Task.FromResult(JwtToken);
+                    Task.FromResult(JwtToken)!;
             })
             .WithAutomaticReconnect()
             .Build();

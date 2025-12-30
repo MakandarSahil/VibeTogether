@@ -16,8 +16,11 @@ namespace VibeTogether.Server.Services
             _context = context;
         }
 
-        public async Task<CreateRoomResponse> CreateRoomAsync(string userId)
+        public async Task<CreateRoomResponse> CreateRoomAsync(string userId, CreateRoomRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.RoomName))
+                throw new ArgumentException("Room name is required");
+
             string roomCode;
             do
             {
@@ -30,8 +33,10 @@ namespace VibeTogether.Server.Services
 
             var room = new Room
             {
+                RoomName = request.RoomName.Trim(),
                 RoomCode = roomCode,
                 HostUserId = userId,
+                CoHostUserIds = new(),
                 Members = new List<string> { userId }
             };
 
@@ -41,6 +46,7 @@ namespace VibeTogether.Server.Services
             return new CreateRoomResponse
             {
                 RoomId = room.Id,
+                RoomName = room.RoomName,
                 RoomCode = room.RoomCode,
                 HostUserId = room.HostUserId
             };
