@@ -1,0 +1,128 @@
+﻿@page "/chat-test"
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+ea
+
+<h3>SignalR Multi-Room Chat Test</h3>
+
+<hr />
+
+<div style="margin-bottom:10px">
+    <label><b>JWT Token</b></label><br />
+    <textarea @bind="JwtToken" rows="3" style="width:100%"></textarea>
+    <button @onclick="Connect" disabled="@IsConnected">Connect</button>
+</div>
+
+@if (IsConnected)
+{
+    <p style="color:green">✅ Connected</p>
+
+    <hr />
+
+    <div style="margin-bottom:10px">
+        <input placeholder="Room Id"
+               @bind="RoomId"
+               style="width:200px" />
+        <button @onclick="JoinRoom">Join Room</button>
+    </div>
+
+    <div style="margin-bottom:10px">
+        <input placeholder="Message"
+               @bind="MessageText"
+               style="width:300px" />
+        <button @onclick="SendMessage">Send</button>
+    </div>
+
+    <hr />
+
+    <h4>Messages</h4>
+
+    <ul>
+        @foreach (var msg in Messages)
+        {
+            <li>
+                <b>[Room: @msg.RoomId]</b>
+                <b>@msg.Username</b> :
+                @msg.Message
+                <small>(@msg.Timestamp.ToLocalTime())</small>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+
+    private HubConnection? _connection;
+
+    private string JwtToken { get; set; } = string.Empty;
+    private string RoomId { get; set; } = string.Empty;
+    private string MessageText { get; set; } = string.Empty;
+
+    private bool IsConnected { get; set; }
+
+    private List<ChatMessageVm> Messages { get; set; } = new();
+
+    // ---------------- CONNECT ----------------
+
+    private async Task Connect()
+    {
+        _connection = new HubConnectionBuilder()
+            .WithUrl("http://localhost:5000/hubs/room", options =>
+            {
+                options.AccessTokenProvider = () =>
+                    Task.FromResult(JwtToken);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _connection.On<ChatMessageVm>("ReceiveMessage", msg =>
+        {
+            Messages.Add(msg);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await _connection.StartAsync();
+        IsConnected = true;
+    }
+
+    // ---------------- ROOM ----------------
+
+    private async Task JoinRoom()
+    {
+        if (_connection is null || string.IsNullOrWhiteSpace(RoomId))
+            return;
+
+        await _connection.InvokeAsync("JoinRoom", RoomId);
+    }
+
+    // ---------------- CHAT ----------------
+
+    private async Task SendMessage()
+    {
+        if (_connection is null ||
+            string.IsNullOrWhiteSpace(RoomId) ||
+            string.IsNullOrWhiteSpace(MessageText))
+            return;
+
+        await _connection.InvokeAsync("SendMessage", RoomId, MessageText);
+        MessageText = string.Empty;
+    }
+
+    // ---------------- CLEANUP ----------------
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_connection != null)
+            await _connection.DisposeAsync();
+    }
+
+    // ---------------- VIEW MODEL ----------------
+
+    public class ChatMessageVm
+    {
+        public string RoomId { get; set; } = "";
+        public string Username { get; set; } = "";
+        public string Message { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+    }
+}
