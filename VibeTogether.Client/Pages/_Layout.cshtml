@@ -29,5 +29,27 @@
 
     <script src="_framework/blazor.server.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script>
+        window.audioHelper = {
+            setSource: function (audio, src) {
+                audio.src = src;
+            },
+            playAt: function (audio, position) {
+                audio.currentTime = position;
+                audio.play();
+            },
+            pauseAt: function (audio, position) {
+                audio.currentTime = position;
+                audio.pause();
+            },
+            seekTo: function (audio, position) {
+                audio.currentTime = position;
+            },
+            getCurrentTime: function (audio) {
+                return audio.currentTime;
+            }
+        };
+    </script>
+
 </body>
 </html>

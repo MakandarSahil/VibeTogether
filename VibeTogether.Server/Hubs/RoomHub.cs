@@ -140,15 +140,19 @@ namespace VibeTogether.Server.Hubs
 
         private async Task<Room> GetRoom(string roomId)
         {
+            if (!MongoDB.Bson.ObjectId.TryParse(roomId, out _))
+                throw new HubException("Invalid room id");
+
             var room = await _context.Rooms
                 .Find(r => r.Id == roomId)
                 .FirstOrDefaultAsync();
 
             if (room == null)
                 throw new HubException("Room not found");
-            
+
             return room;
         }
+
 
         private async Task SaveRoom(Room room)
         {
@@ -157,6 +161,123 @@ namespace VibeTogether.Server.Hubs
                 room
             );
         }
+
+        public async Task PlayTrack(string roomId, string trackUrl)
+        {
+            var userId = Context.UserIdentifier!;
+            var room = await GetRoom(roomId);
+
+            // Permission
+            if (room.HostUserId != userId &&
+                !room.CoHostUserIds.Contains(userId))
+                throw new HubException("No permission");
+
+            // Active room
+            if (_presenceService.GetActiveRoom(userId) != roomId)
+                throw new HubException("Activate room first");
+
+            var state = new PlaybackState
+            {
+                RoomId = roomId,
+                TrackUrl = trackUrl,
+                IsPlaying = true,
+                Position = 0,
+                LastUpdatedUtc = DateTime.UtcNow,
+                ControlledByUserId = userId
+            };
+
+            await _context.PlaybackStates.ReplaceOneAsync(
+                s => s.RoomId == roomId,
+                state,
+                new ReplaceOptions { IsUpsert = true }
+            );
+
+            await Clients.Group(roomId).SendAsync("MusicPlay", new
+            {
+                trackUrl,
+                position = 0,
+                serverTime = state.LastUpdatedUtc
+            });
+        }
+
+
+        public async Task Pause(string roomId, double position)
+        {
+            var userId = Context.UserIdentifier!;
+            var state = await GetPlaybackState(roomId);
+
+            EnsureController(roomId, userId);
+            EnsureActiveRoom(userId, roomId);
+
+            state.IsPlaying = false;
+            state.Position = position;
+            state.LastUpdatedUtc = DateTime.UtcNow;
+
+            await SavePlaybackState(state);
+
+            await Clients.Group(roomId).SendAsync("MusicPause", new
+            {
+                position,
+                serverTime = state.LastUpdatedUtc
+            });
+        }
+
+        public async Task Seek(string roomId, double position)
+        {
+            var userId = Context.UserIdentifier!;
+            var state = await GetPlaybackState(roomId);
+
+            EnsureController(roomId, userId);
+            EnsureActiveRoom(userId, roomId);
+
+            state.Position = position;
+            state.LastUpdatedUtc = DateTime.UtcNow;
+
+            await SavePlaybackState(state);
+
+            await Clients.Group(roomId).SendAsync("MusicSeek", new
+            {
+                position,
+                serverTime = state.LastUpdatedUtc
+            });
+        }
+
+
+        private async Task<PlaybackState> GetPlaybackState(string roomId)
+        {
+            var state = await _context.PlaybackStates
+                .Find(s => s.RoomId == roomId)
+                .FirstOrDefaultAsync();
+
+            if (state == null)
+                throw new HubException("Nothing is playing");
+
+            return state;
+        }
+
+        private async Task SavePlaybackState(PlaybackState state)
+        {
+            await _context.PlaybackStates.ReplaceOneAsync(
+                s => s.RoomId == state.RoomId,
+                state
+            );
+        }
+
+        private void EnsureController(string roomId, string userId)
+        {
+            var room = _context.Rooms.Find(r => r.Id == roomId).FirstOrDefault();
+            if (room == null ||
+                (room.HostUserId != userId &&
+                 !room.CoHostUserIds.Contains(userId)))
+                throw new HubException("No permission");
+        }
+
+        private void EnsureActiveRoom(string userId, string roomId)
+        {
+            if (_presenceService.GetActiveRoom(userId) != roomId)
+                throw new HubException("Room not active");
+        }
+
 
     }
 }

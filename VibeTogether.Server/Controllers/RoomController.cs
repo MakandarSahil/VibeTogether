@@ -22,10 +22,10 @@ namespace VibeTogether.Server.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRoom()
+        public async Task<IActionResult> CreateRoom([FromBody] CreateRoomRequest request)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-            var result = await _roomService.CreateRoomAsync(userId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var result = await _roomService.CreateRoomAsync(userId, request);
             return Ok(result);
         }
 

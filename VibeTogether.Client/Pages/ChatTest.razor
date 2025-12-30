@@ -1,9 +1,9 @@
 ﻿@page "/chat-test"
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.SignalR.Client
-ea
+@inject IJSRuntime JS
 
-<h3>SignalR Multi-Room Chat Test</h3>
+<h3>SignalR Chat + Music Sync Test</h3>
 
 <hr />
 
@@ -19,13 +19,16 @@ ea
 
     <hr />
 
+    <!-- ROOM -->
     <div style="margin-bottom:10px">
         <input placeholder="Room Id"
                @bind="RoomId"
                style="width:200px" />
         <button @onclick="JoinRoom">Join Room</button>
+        <button @onclick="ActivateRoom">Activate Room</button>
     </div>
 
+    <!-- CHAT -->
     <div style="margin-bottom:10px">
         <input placeholder="Message"
                @bind="MessageText"
@@ -35,6 +38,25 @@ ea
 
     <hr />
 
+    <!-- MUSIC -->
+    <h4>Music Sync</h4>
+
+    <div style="margin-bottom:10px">
+        <input placeholder="Track URL (mp3)"
+               @bind="TrackUrl"
+               style="width:400px" />
+
+        <button @onclick="PlayTrack">Play</button>
+        <button @onclick="PauseTrack">Pause</button>
+        <button @onclick="SeekBackward">⏪ -10s</button>
+        <button @onclick="SeekForward">⏩ +10s</button>
+    </div>
+
+    <audio @ref="audioRef" controls style="width:100%"></audio>
+
+    <hr />
+
+    <!-- CHAT MESSAGES -->
     <h4>Messages</h4>
 
     <ul>
@@ -54,13 +76,17 @@ ea
 
     private HubConnection? _connection;
 
-    private string JwtToken { get; set; } = string.Empty;
-    private string RoomId { get; set; } = string.Empty;
-    private string MessageText { get; set; } = string.Empty;
+    private string JwtToken { get; set; } = "";
+    private string RoomId { get; set; } = "";
+    private string MessageText { get; set; } = "";
+    private string TrackUrl { get; set; } =
+        "https://archive.org/download/testmp3testfile/mpthreetest.mp3";
 
-    private bool IsConnected { get; set; }
+    private bool IsConnected;
 
-    private List<ChatMessageVm> Messages { get; set; } = new();
+    private List<ChatMessageVm> Messages = new();
+
+    private ElementReference audioRef;
 
     // ---------------- CONNECT ----------------
 
@@ -70,15 +96,32 @@ ea
             .WithUrl("http://localhost:5000/hubs/room", options =>
             {
                 options.AccessTokenProvider = () =>
-                    Task.FromResult(JwtToken)!;
+                    Task.FromResult(JwtToken.Trim());
             })
             .WithAutomaticReconnect()
             .Build();
 
+        // CHAT
         _connection.On<ChatMessageVm>("ReceiveMessage", msg =>
         {
             Messages.Add(msg);
             InvokeAsync(StateHasChanged);
+        });
+
+        // MUSIC EVENTS
+        _connection.On<MusicPlayVm>("MusicPlay", async data =>
+        {
+            await PlayFromServer(data);
+        });
+
+        _connection.On<MusicPauseVm>("MusicPause", async data =>
+        {
+            await PauseFromServer(data);
+        });
+
+        _connection.On<MusicSeekVm>("MusicSeek", async data =>
+        {
+            await SeekFromServer(data);
         });
 
         await _connection.StartAsync();
@@ -89,24 +132,112 @@ ea
 
     private async Task JoinRoom()
     {
-        if (_connection is null || string.IsNullOrWhiteSpace(RoomId))
-            return;
-
+        if (_connection == null) return;
         await _connection.InvokeAsync("JoinRoom", RoomId);
+    }
+
+    private async Task ActivateRoom()
+    {
+        if (_connection == null) return;
+        await _connection.InvokeAsync("ActivateRoom", RoomId);
     }
 
     // ---------------- CHAT ----------------
 
     private async Task SendMessage()
     {
-        if (_connection is null ||
-            string.IsNullOrWhiteSpace(RoomId) ||
-            string.IsNullOrWhiteSpace(MessageText))
-            return;
-
+        if (_connection == null) return;
         await _connection.InvokeAsync("SendMessage", RoomId, MessageText);
-        MessageText = string.Empty;
+        MessageText = "";
     }
+
+    // ---------------- MUSIC CONTROLS ----------------
+
+    private async Task PlayTrack()
+    {
+        if (_connection == null) return;
+        await _connection.InvokeAsync("PlayTrack", RoomId, TrackUrl);
+    }
+
+    private async Task PauseTrack()
+    {
+        if (_connection == null) return;
+        await _connection.InvokeAsync(
+            "Pause",
+            RoomId,
+            await GetCurrentTime()
+        );
+    }
+
+    private async Task SeekForward()
+    {
+        if (_connection == null) return;
+        await _connection.InvokeAsync(
+            "Seek",
+            RoomId,
+            await GetCurrentTime() + 10
+        );
+    }
+
+    private async Task SeekBackward()
+    {
+        if (_connection == null) return;
+        await _connection.InvokeAsync(
+            "Seek",
+            RoomId,
+            Math.Max(0, await GetCurrentTime() - 10)
+        );
+    }
+
+    // ---------------- AUDIO HANDLERS ----------------
+
+    private async Task PlayFromServer(MusicPlayVm data)
+    {
+        await JS.InvokeVoidAsync(
+            "audioHelper.setSource",
+            audioRef,
+            data.TrackUrl
+        );
+
+        var drift =
+            (DateTime.UtcNow - data.ServerTime).TotalSeconds;
+
+        await JS.InvokeVoidAsync(
+            "audioHelper.playAt",
+            audioRef,
+            data.Position + drift
+        );
+    }
+
+
+    private async Task PauseFromServer(MusicPauseVm data)
+    {
+        await JS.InvokeVoidAsync(
+            "audioHelper.pauseAt",
+            audioRef,
+            data.Position
+        );
+    }
+
+
+    private async Task SeekFromServer(MusicSeekVm data)
+    {
+        await JS.InvokeVoidAsync(
+            "audioHelper.seekTo",
+            audioRef,
+            data.Position
+        );
+    }
+
+
+    private async Task<double> GetCurrentTime()
+    {
+        return await JS.InvokeAsync<double>(
+            "audioHelper.getCurrentTime",
+            audioRef
+        );
+    }
+
 
     // ---------------- CLEANUP ----------------
 
@@ -116,7 +247,7 @@ ea
             await _connection.DisposeAsync();
     }
 
-    // ---------------- VIEW MODEL ----------------
+    // ---------------- VIEW MODELS ----------------
 
     public class ChatMessageVm
     {
@@ -124,5 +255,24 @@ ea
         public string Username { get; set; } = "";
         public string Message { get; set; } = "";
         public DateTime Timestamp { get; set; }
+    }
+
+    public class MusicPlayVm
+    {
+        public string TrackUrl { get; set; } = "";
+        public double Position { get; set; }
+        public DateTime ServerTime { get; set; }
+    }
+
+    public class MusicPauseVm
+    {
+        public double Position { get; set; }
+        public DateTime ServerTime { get; set; }
+    }
+
+    public class MusicSeekVm
+    {
+        public double Position { get; set; }
+        public DateTime ServerTime { get; set; }
     }
 }

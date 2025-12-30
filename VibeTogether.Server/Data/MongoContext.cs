@@ -20,6 +20,7 @@ namespace VibeTogether.Server.Data
         public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
         public IMongoCollection<Room> Rooms => _database.GetCollection<Room>("Rooms");
         public IMongoCollection<ChatMessage> ChatMessages => _database.GetCollection<ChatMessage>("ChatMessages");
+        public IMongoCollection<PlaybackState> PlaybackStates => _database.GetCollection<PlaybackState>("PlaybackStates");
 
         public void CreateIndexes()
         {
