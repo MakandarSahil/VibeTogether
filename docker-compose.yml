@@ -1,1 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+services:
+  api:
+    build:
+      context: ./VibeTogether.Server
+      dockerfile: Dockerfile
+    container_name: vibetogether_api
+    ports:
+      - "5000:8080"
+    depends_on:
+      - mongodb
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+  mongodb:
+    image: mongo:7
+    container_name: vibetogether_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
