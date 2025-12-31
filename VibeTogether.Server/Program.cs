@@ -6,9 +6,9 @@ using VibeTogether.Server.Data;
 using VibeTogether.Server.Hubs;
 using VibeTogether.Server.Infrastructure.Generators;
 using VibeTogether.Server.Infrastructure.Security;
-using VibeTogether.Server.Services;
 using VibeTogether.Server.Services.Interfaces;
 using Microsoft.OpenApi.Models;
+using VibeTogether.Server.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,6 +64,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddSingleton<JwtTokenService>();
 
 builder.Services.AddSingleton<PresenceService>();
+builder.Services.AddScoped<RoomPermissionService>();
+builder.Services.AddScoped<ChatService>();
+builder.Services.AddScoped<MusicSyncService>();
+
 
 
 builder.Services.AddSignalR();
