@@ -3,7 +3,7 @@ using MongoDB.Driver;
 using VibeTogether.Server.Data;
 using VibeTogether.Server.Models;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.RoomServices
 {
     public class MusicSyncService
     {
@@ -36,6 +36,33 @@ namespace VibeTogether.Server.Services
                 new ReplaceOptions { IsUpsert = true }
             );
 
+            return state;
+        }
+
+        public async Task<PlaybackState> Pause(
+            string roomId,
+            double position)
+        {
+            var state = await GetState(roomId);
+
+            state.IsPlaying = false;
+            state.Position = position;
+            state.LastUpdatedUtc = DateTime.UtcNow;
+
+            await SaveState(state);
+            return state;
+        }
+
+        public async Task<PlaybackState> Seek(
+            string roomId,
+            double position)
+        {
+            var state = await GetState(roomId);
+
+            state.Position = position;
+            state.LastUpdatedUtc = DateTime.UtcNow;
+
+            await SaveState(state);
             return state;
         }
 

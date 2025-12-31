@@ -5,7 +5,7 @@ using VibeTogether.Server.Infrastructure.Generators;
 using VibeTogether.Server.Models;
 using VibeTogether.Server.Services.Interfaces;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.RoomServices
 {
     public class RoomService : IRoomService
     {
@@ -21,6 +21,7 @@ namespace VibeTogether.Server.Services
             if (string.IsNullOrWhiteSpace(request.RoomName))
                 throw new ArgumentException("Room name is required");
 
+            // this needs to be improved it can cause race condition
             string roomCode;
             do
             {

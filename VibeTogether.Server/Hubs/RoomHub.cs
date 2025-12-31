@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using VibeTogether.Server.Services;
+using VibeTogether.Server.Services.RoomServices;
 
 namespace VibeTogether.Server.Hubs
 {
@@ -30,7 +30,6 @@ namespace VibeTogether.Server.Hubs
             await base.OnDisconnectedAsync(ex);
         }
 
-        // -------- ROOM --------
 
         public async Task JoinRoom(string roomId)
         {
@@ -44,7 +43,6 @@ namespace VibeTogether.Server.Hubs
             await Clients.Caller.SendAsync("ActiveRoomChanged", roomId);
         }
 
-        // -------- CHAT --------
 
         public async Task SendMessage(string roomId, string message)
         {
@@ -58,7 +56,6 @@ namespace VibeTogether.Server.Hubs
             await Clients.Group(roomId).SendAsync("ReceiveMessage", dto);
         }
 
-        // -------- HOST / CO-HOST --------
 
         public async Task AddCoHost(string roomId, string targetUserId)
         {
@@ -69,7 +66,6 @@ namespace VibeTogether.Server.Hubs
             await Clients.Group(roomId).SendAsync("CoHostAdded", targetUserId);
         }
 
-        // -------- MUSIC --------
 
         public async Task PlayTrack(string roomId, string trackUrl)
         {
@@ -84,6 +80,43 @@ namespace VibeTogether.Server.Hubs
             await Clients.Group(roomId).SendAsync("MusicPlay", new
             {
                 trackUrl = state.TrackUrl,
+                position = state.Position,
+                serverTime = state.LastUpdatedUtc
+            });
+        }
+        public async Task Pause(string roomId, double position)
+        {
+            var userId = Context.UserIdentifier!;
+
+            var room = await _permissions.GetRoomAsync(roomId);
+            _permissions.EnsureController(room, userId);
+
+            if (_presence.GetActiveRoom(userId) != roomId)
+                throw new HubException("Room not active");
+
+            var state = await _music.Pause(roomId, position);
+
+            await Clients.Group(roomId).SendAsync("MusicPause", new
+            {
+                position = state.Position,
+                serverTime = state.LastUpdatedUtc
+            });
+        }
+
+        public async Task Seek(string roomId, double position)
+        {
+            var userId = Context.UserIdentifier!;
+
+            var room = await _permissions.GetRoomAsync(roomId);
+            _permissions.EnsureController(room, userId);
+
+            if (_presence.GetActiveRoom(userId) != roomId)
+                throw new HubException("Room not active");
+
+            var state = await _music.Seek(roomId, position);
+
+            await Clients.Group(roomId).SendAsync("MusicSeek", new
+            {
                 position = state.Position,
                 serverTime = state.LastUpdatedUtc
             });

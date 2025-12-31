@@ -1,23 +1,47 @@
-services:
-  api:
-    build:
-      context: ./VibeTogether.Server
-      dockerfile: Dockerfile
-    container_name: vibetogether_api
-    ports:
-      - "5000:8080"
-    depends_on:
-      - mongodb
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+version: "3.9"
 
-  mongodb:
-    image: mongo:7
-    container_name: vibetogether_mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+services:
+    api:
+        build:
+          context: ./VibeTogether.Server
+          dockerfile: Dockerfile
+        container_name: vibetogether_api
+        ports:
+          - "5000:8080"
+        depends_on:
+          - mongodb
+        environment:
+          - ASPNETCORE_ENVIRONMENT=Development
+        networks:
+          - vibetogether-net
+
+    client:
+        build:
+          context: ./VibeTogether.Client
+          dockerfile: Dockerfile
+        container_name: vibetogether_client
+        ports:
+          - "3000:8080"
+        depends_on:
+          - api
+        environment:
+          - ASPNETCORE_ENVIRONMENT=Development
+        networks:
+          - vibetogether-net
+
+    mongodb:
+        image: mongo:7
+        container_name: vibetogether_mongo
+        ports:
+          - "27017:27017"
+        volumes:
+          - mongo_data:/data/db
+        networks:
+          - vibetogether-net
 
 volumes:
-  mongo_data:
+    mongo_data:
+
+networks:
+    vibetogether-net:
+        driver: bridge

@@ -2,7 +2,7 @@
 using VibeTogether.Server.DTOs.Chat;
 using VibeTogether.Server.Models;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.RoomServices
 {
     public class ChatService
     {

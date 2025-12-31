@@ -3,7 +3,7 @@ using MongoDB.Driver;
 using VibeTogether.Server.Data;
 using VibeTogether.Server.Models;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.RoomServices
 {
     public class RoomPermissionService
     {

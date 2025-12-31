@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @using Microsoft.AspNetCore.SignalR.Client
 @inject IJSRuntime JS
+@inject IConfiguration Config
 
 <h3>SignalR Chat + Music Sync Test</h3>
 
@@ -93,10 +94,10 @@
     private async Task Connect()
     {
         _connection = new HubConnectionBuilder()
-            .WithUrl("http://localhost:5000/hubs/room", options =>
+            .WithUrl($"{Config["ApiBaseUrl"]}/hubs/room", options =>
             {
                 options.AccessTokenProvider = () =>
-                    Task.FromResult(JwtToken.Trim());
+                    Task.FromResult(JwtToken.Trim())!;
             })
             .WithAutomaticReconnect()
             .Build();

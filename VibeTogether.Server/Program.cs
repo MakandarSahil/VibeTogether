@@ -8,7 +8,8 @@ using VibeTogether.Server.Infrastructure.Generators;
 using VibeTogether.Server.Infrastructure.Security;
 using VibeTogether.Server.Services.Interfaces;
 using Microsoft.OpenApi.Models;
-using VibeTogether.Server.Services;
+using VibeTogether.Server.Services.Auth;
+using VibeTogether.Server.Services.RoomServices;
 
 
 var builder = WebApplication.CreateBuilder(args);

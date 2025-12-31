@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.RoomServices
 {
     public class PresenceService
     {

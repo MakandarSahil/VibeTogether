@@ -13,4 +13,4 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "VibeTogether.Server.dll"]
+ENTRYPOINT ["dotnet", "VibeTogether.Client.dll"]

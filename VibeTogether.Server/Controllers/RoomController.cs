@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using VibeTogether.Server.DTOs.Room;
-using VibeTogether.Server.Services;
 using VibeTogether.Server.Services.Interfaces;
+using VibeTogether.Server.Services.RoomServices;
 
 namespace VibeTogether.Server.Controllers
 {

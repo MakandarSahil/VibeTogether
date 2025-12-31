@@ -6,7 +6,7 @@ using VibeTogether.Server.Infrastructure.Security;
 using VibeTogether.Server.Models;
 using VibeTogether.Server.Services.Interfaces;
 
-namespace VibeTogether.Server.Services
+namespace VibeTogether.Server.Services.Auth
 {
     public class AuthServices : IAuthService
     {
@@ -35,6 +35,9 @@ namespace VibeTogether.Server.Services
 
             if (usernameExits)
                 throw new InvalidOperationException("Username already registered");
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+                throw new InvalidOperationException("Password not provided");
 
             var user = new User
             {
