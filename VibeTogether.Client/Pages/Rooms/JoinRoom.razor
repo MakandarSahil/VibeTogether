@@ -1,0 +1,19 @@
+﻿@page "/rooms/join"
+@attribute [Authorize]
+@inject JoinRoomViewModel VM
+
+<h3>Join Room</h3>
+
+<input placeholder="Room code"
+       @bind="VM.RoomCode" />
+
+<br />
+
+<button @onclick="VM.JoinAsync" disabled="@VM.IsBusy">
+    Join
+</button>
+
+@if (!string.IsNullOrEmpty(VM.Error))
+{
+    <p style="color:red">@VM.Error</p>
+}

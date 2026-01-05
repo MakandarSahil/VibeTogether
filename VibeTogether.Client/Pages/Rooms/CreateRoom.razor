@@ -1,0 +1,19 @@
+﻿@page "/rooms/create"
+@attribute [Authorize]
+@inject CreateRoomViewModel VM
+
+<h3>Create Room</h3>
+
+<input placeholder="Room name"
+       @bind="VM.RoomName" />
+
+<br />
+
+<button @onclick="VM.CreateAsync" disabled="@VM.IsBusy">
+    Create
+</button>
+
+@if (!string.IsNullOrEmpty(VM.Error))
+{
+    <p style="color:red">@VM.Error</p>
+}

@@ -1,0 +1,16 @@
+﻿@page "/login"
+@inject LoginViewModel VM
+
+<h3>Login</h3>
+<input placeholder="Email" type="email" @bind="VM.Email" />
+<br />
+
+<input placeholder="Password" type="password" @bind="VM.Password"/>
+<br />
+
+<button @onclick="VM.LoginAsync">Login</button>
+
+@if (!string.IsNullOrEmpty(VM.Error))
+{
+    <p style="color:red">@VM.Error</p>
+}

@@ -1,0 +1,27 @@
+﻿@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+@code {
+    private bool _checked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_checked) return;
+        _checked = true;
+
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+
+        if (!state.User.Identity?.IsAuthenticated ?? true)
+        {
+            var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
+            if (string.IsNullOrEmpty(returnUrl))
+            {
+                Nav.NavigateTo("/login", replace: true);
+            }
+            else
+            {
+                Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", replace: true);
+            }
+        }
+    }
+}
